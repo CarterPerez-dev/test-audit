@@ -100,6 +100,12 @@ func DistTrapType(qs []parse.Question) (map[string]int, []string) {
 		counts[q.TrapType]++
 	}
 	total := len(qs)
+	// Scale the per-type minimum to test size: TrapMinN is the 100q policy
+	// (5). At N=100 effMin=5 (unchanged); at N=25 effMin=1; floor 1.
+	effMin := tg.TrapMinN * total / 100
+	if effMin < 1 {
+		effMin = 1
+	}
 	var flags []string
 	for _, t := range trapTypes {
 		n := counts[t]
@@ -109,14 +115,15 @@ func DistTrapType(qs []parse.Question) (map[string]int, []string) {
 				flags,
 				fmt.Sprintf("trap type %q is missing (all six must appear)", t),
 			)
-		case n < tg.TrapMinN:
+		case n < effMin:
 			flags = append(
 				flags,
 				fmt.Sprintf(
-					"trap type %q appears only %d time(s) (minimum %d)",
+					"trap type %q appears only %d time(s) (minimum %d for a %d-question test)",
 					t,
 					n,
-					tg.TrapMinN,
+					effMin,
+					total,
 				),
 			)
 		}

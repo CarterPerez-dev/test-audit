@@ -184,6 +184,77 @@ func TestAudit_DoesNotFlagExamTipLength(t *testing.T) {
 	}
 }
 
+// biasedSet builds n questions where the first k have the correct option
+// strictly longest by chars; the rest are clean.
+func biasedSet(n, k int) []parse.Question {
+	var qs []parse.Question
+	for i := 0; i < n; i++ {
+		correctLong := i < k
+		opts := []string{"Short A", "Short B", "Short C", "Short D"}
+		ci := 0
+		if correctLong {
+			opts = []string{
+				"This correct option is deliberately by far the single longest one here",
+				"Short B", "Short C", "Short D",
+			}
+		}
+		qs = append(qs, parse.Question{
+			ID: i + 1, Question: "Which control is best here?", Options: opts,
+			CorrectAnswerIndex: ci,
+			Explanation:        "The correct choice fits better than the others.",
+			ExamTip:            "Match control to requirement.",
+			Domain:             "1. Security and Risk Management",
+			QuestionType:       "application", StemLength: "short",
+			TrapType: trapTypes[i%6], Tags: []string{"a", "b", "c"},
+		})
+	}
+	return qs
+}
+
+func TestAudit_LengthBiasScalesWithTestSize(t *testing.T) {
+	cases := []struct {
+		name       string
+		n, k       int
+		wantPass   bool
+		wantSevere bool
+	}{
+		{"25q 40% biased -> fail severe", 25, 10, false, true},
+		{"25q 24% biased -> pass", 25, 6, true, false},
+		{"100q 35 -> warn not severe (boundary)", 100, 35, false, false},
+		{"100q 36 -> severe (boundary)", 100, 36, false, true},
+		{"100q 25 -> pass (boundary)", 100, 25, true, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			rep := Audit("x.js", qs2test(biasedSet(c.n, c.k)), DefaultTargets())
+			if rep.OverallPass != c.wantPass {
+				t.Errorf("overallPass=%v want %v (critical=%v)", rep.OverallPass, c.wantPass, rep.CriticalFlags)
+			}
+			severe := false
+			for _, f := range rep.CriticalFlags {
+				if strings.Contains(f, "consistently longer") {
+					severe = true
+				}
+			}
+			if severe != c.wantSevere {
+				t.Errorf("severe=%v want %v (critical=%v)", severe, c.wantSevere, rep.CriticalFlags)
+			}
+		})
+	}
+}
+
+func TestAudit_TrapMinScalesDown_25q(t *testing.T) {
+	// 25 questions, all 6 trap types present (~4 each). Must NOT flag
+	// "below minimum" — the absolute 5 doesn't apply at N=25.
+	qs := biasedSet(25, 0)
+	rep := Audit("x.js", qs2test(qs), DefaultTargets())
+	for _, f := range rep.DistributionAudit.TrapType.Flags {
+		if strings.Contains(f, "minimum") {
+			t.Errorf("trap min should scale down for 25q, got: %q", f)
+		}
+	}
+}
+
 func qs2test(qs []parse.Question) parse.Test {
 	return parse.Test{
 		Category:     "clean",

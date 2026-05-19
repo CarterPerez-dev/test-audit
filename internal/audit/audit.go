@@ -96,23 +96,25 @@ func Audit(testFile string, t parse.Test, tg Targets) Report {
 	var critical []string
 	var albFlags []string
 
-	switch n := lb.CorrectIsLongestByCharCount; {
-	case n > 35:
-		msg := fmt.Sprintf(
-			"correct answer consistently longer than distractors — %d/%d questions where the correct answer is the longest by character count (severe; threshold >35)",
-			n,
-			len(qs),
-		)
-		critical = append(critical, msg)
-		albFlags = append(albFlags, msg)
-	case n >= 26:
-		msg := fmt.Sprintf(
-			"lengthBias warning — %d/%d questions where the correct answer is the longest by character count (concerning; 26-35 band)",
-			n,
-			len(qs),
-		)
-		critical = append(critical, msg)
-		albFlags = append(albFlags, msg)
+	// Length-bias bands are RELATIVE to test size so they hold for 25q,
+	// 100q, or any N. ratio ≤25% ok · >25%–35% warning · >35% severe.
+	// At N=100 this is byte-identical to the old absolute 25/26-35/>35.
+	if n, total := lb.CorrectIsLongestByCharCount, len(qs); total > 0 {
+		ratio := float64(n) / float64(total)
+		switch {
+		case ratio > 0.35:
+			msg := fmt.Sprintf(
+				"correct answer consistently longer than distractors — %d/%d (%.0f%%) questions where the correct answer is the longest by character count (severe; >35%%)",
+				n, total, ratio*100)
+			critical = append(critical, msg)
+			albFlags = append(albFlags, msg)
+		case ratio > 0.25:
+			msg := fmt.Sprintf(
+				"lengthBias warning — %d/%d (%.0f%%) questions where the correct answer is the longest by character count (concerning; 25-35%% band)",
+				n, total, ratio*100)
+			critical = append(critical, msg)
+			albFlags = append(albFlags, msg)
+		}
 	}
 
 	if len(explFlags) > 0 {
