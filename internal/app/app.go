@@ -147,16 +147,12 @@ func auditOne(
 	if err := os.WriteFile(outPath, b, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", outPath, err)
 	}
-	verdict := "PASS"
-	if !rep.OverallPass {
-		verdict = "FAIL"
-	}
 	fmt.Fprintf(
 		stderr,
-		"test-audit: wrote %s [%s, %d critical]\n",
+		"test-audit: wrote %s (%d high-priority, %d flagged questions)\n",
 		outPath,
-		verdict,
 		len(rep.CriticalFlags),
+		len(rep.QuestionFlags),
 	)
 	return nil
 }

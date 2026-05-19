@@ -69,8 +69,11 @@ func TestRun_WritesAuditFileNextToInput(t *testing.T) {
 			"answerLengthBias should be nested under distributionAudit, not top-level",
 		)
 	}
-	if _, ok := rep["overallPass"]; !ok {
-		t.Errorf("missing overallPass")
+	if _, ok := rep["overallPass"]; ok {
+		t.Errorf("overallPass must be absent — there is no pass/fail verdict")
+	}
+	if _, ok := rep["criticalFlags"]; !ok {
+		t.Errorf("missing criticalFlags")
 	}
 }
 

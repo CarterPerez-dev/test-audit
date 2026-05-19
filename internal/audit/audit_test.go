@@ -14,7 +14,7 @@ import (
 	"github.com/CarterPerez-dev/test-audit/internal/parse"
 )
 
-func TestAudit_RealCISSP6_KnownBadFails(t *testing.T) {
+func TestAudit_RealCISSP6_Invariants(t *testing.T) {
 	raw, err := os.ReadFile(
 		"/home/yoshi/AngelaMos-LLC/CertGames-Content/cissp/tests/cissp_test_6.js",
 	)
@@ -35,31 +35,28 @@ func TestAudit_RealCISSP6_KnownBadFails(t *testing.T) {
 	if sl.Short+sl.Medium+sl.Long != 100 {
 		t.Errorf("stemLength counts sum = %d, want 100", sl.Short+sl.Medium+sl.Long)
 	}
-	// Invariant (not an assumption about pre/post-fix state): overallPass is
-	// true iff there are zero critical flags.
-	if rep.OverallPass != (len(rep.CriticalFlags) == 0) {
-		t.Errorf(
-			"overallPass=%v but criticalFlags=%v (must be consistent)",
-			rep.OverallPass,
-			rep.CriticalFlags,
-		)
-	}
 	if !strings.Contains(strings.ToLower(rep.Summary), "deterministic") {
 		t.Errorf("summary must disclose deterministic scope, got: %q", rep.Summary)
 	}
+	// No pass/fail verdict: summary must not declare PASS/FAIL.
+	if strings.Contains(rep.Summary, "PASS") || strings.Contains(rep.Summary, "FAIL") {
+		t.Errorf("summary must not contain a pass/fail verdict, got: %q", rep.Summary)
+	}
 
-	// Schema fidelity: answerLengthBias is a key; correctAnswerPosition is NOT a key.
+	// Schema fidelity: answerLengthBias is a key; overallPass and
+	// correctAnswerPosition are NOT keys (no verdict; runtime shuffle).
 	b, _ := json.Marshal(rep)
 	js := string(b)
 	if !strings.Contains(js, `"answerLengthBias"`) {
 		t.Errorf("output missing answerLengthBias")
 	}
 	if strings.Contains(js, `"correctAnswerPosition"`) {
-		t.Errorf(
-			"output must NOT contain a correctAnswerPosition key (runtime shuffle)",
-		)
+		t.Errorf("output must NOT contain a correctAnswerPosition key")
 	}
-	for _, k := range []string{`"testFile"`, `"overallPass"`, `"criticalFlags"`, `"distributionAudit"`, `"questionFlags"`, `"fieldAccuracyFlags"`, `"coverageAudit"`, `"summary"`} {
+	if strings.Contains(js, `"overallPass"`) {
+		t.Errorf("output must NOT contain an overallPass key (no pass/fail verdict)")
+	}
+	for _, k := range []string{`"testFile"`, `"criticalFlags"`, `"distributionAudit"`, `"questionFlags"`, `"fieldAccuracyFlags"`, `"coverageAudit"`, `"summary"`} {
 		if !strings.Contains(js, k) {
 			t.Errorf("output missing key %s", k)
 		}
@@ -102,8 +99,8 @@ func TestAudit_CleanTestPasses(t *testing.T) {
 		})
 	}
 	rep := Audit("clean_test_1.js", qs2test(qs), DefaultTargets())
-	if !rep.OverallPass {
-		t.Fatalf("clean test failed: critical=%v", rep.CriticalFlags)
+	if len(rep.CriticalFlags) != 0 {
+		t.Fatalf("clean test produced critical flags: %v", rep.CriticalFlags)
 	}
 	if rep.DistributionAudit.AnswerLengthBias.CorrectIsLongestByCharCount != 0 {
 		t.Errorf("clean test should have 0 char-longest, got %d",
@@ -141,8 +138,8 @@ func TestAudit_GuaranteedLengthBiasFails(t *testing.T) {
 		})
 	}
 	rep := Audit("bias_test_1.js", qs2test(qs), DefaultTargets())
-	if rep.OverallPass {
-		t.Fatalf("100%% length-biased test must FAIL, got overallPass=true")
+	if len(rep.CriticalFlags) == 0 {
+		t.Fatalf("100%% length-biased test must produce a critical flag, got none")
 	}
 	if rep.DistributionAudit.AnswerLengthBias.CorrectIsLongestByCharCount != 100 {
 		t.Errorf(
@@ -213,22 +210,22 @@ func biasedSet(n, k int) []parse.Question {
 
 func TestAudit_LengthBiasScalesWithTestSize(t *testing.T) {
 	cases := []struct {
-		name       string
-		n, k       int
-		wantPass   bool
-		wantSevere bool
+		name         string
+		n, k         int
+		wantCritical bool
+		wantSevere   bool
 	}{
-		{"25q 40% biased -> fail severe", 25, 10, false, true},
-		{"25q 24% biased -> pass", 25, 6, true, false},
-		{"100q 35 -> warn not severe (boundary)", 100, 35, false, false},
-		{"100q 36 -> severe (boundary)", 100, 36, false, true},
-		{"100q 25 -> pass (boundary)", 100, 25, true, false},
+		{"25q 40% biased -> severe critical", 25, 10, true, true},
+		{"25q 24% biased -> no critical", 25, 6, false, false},
+		{"100q 35 -> warn critical not severe (boundary)", 100, 35, true, false},
+		{"100q 36 -> severe (boundary)", 100, 36, true, true},
+		{"100q 25 -> no critical (boundary)", 100, 25, false, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			rep := Audit("x.js", qs2test(biasedSet(c.n, c.k)), DefaultTargets())
-			if rep.OverallPass != c.wantPass {
-				t.Errorf("overallPass=%v want %v (critical=%v)", rep.OverallPass, c.wantPass, rep.CriticalFlags)
+			if (len(rep.CriticalFlags) > 0) != c.wantCritical {
+				t.Errorf("criticalFlags=%v want non-empty=%v", rep.CriticalFlags, c.wantCritical)
 			}
 			severe := false
 			for _, f := range rep.CriticalFlags {

@@ -59,7 +59,6 @@ type CoverageAudit struct {
 
 type Report struct {
 	TestFile           string            `json:"testFile"`
-	OverallPass        bool              `json:"overallPass"`
 	CriticalFlags      []string          `json:"criticalFlags"`
 	DistributionAudit  DistributionAudit `json:"distributionAudit"`
 	QuestionFlags      []QFlag           `json:"questionFlags"`
@@ -169,16 +168,15 @@ func Audit(testFile string, t parse.Test, tg Targets) Report {
 		CoverageAudit:      domainCoverage(qs),
 		Summary:            "",
 	}
-	rep.OverallPass = len(critical) == 0
-	verdict := "PASS"
-	if !rep.OverallPass {
-		verdict = "FAIL"
-	}
+	// No pass/fail verdict by design: this is a workflow step, not a gate.
+	// Every test has flags and every flag gets fixed downstream; a boolean
+	// "pass" is meaningless and risks the fixer deprioritizing real issues.
+	// criticalFlags remains as the highest-priority "fix these first" bucket.
 	rep.Summary = fmt.Sprintf(
-		"%s — %d questions, %d critical flag(s), correct-is-longest by char %d / by word %d. %s",
-		verdict,
+		"%d questions audited — %d high-priority flag(s), %d flagged question(s); correct-is-longest by char %d / by word %d. Fix every flagged item; there is no pass/fail. %s",
 		len(qs),
 		len(critical),
+		len(rep.QuestionFlags),
 		lb.CorrectIsLongestByCharCount,
 		lb.CorrectIsLongestByWordCount,
 		summaryScope,
