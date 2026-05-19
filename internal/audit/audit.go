@@ -74,11 +74,11 @@ const summaryScope = "This is a DETERMINISTIC audit. Implemented (mechanically v
 	"answer-length bias (#1: char/word longest, sole parenthetical/because/2nd-sentence/hedge), " +
 	"stemLength accuracy vs computed sentence count, tag count, stemLength/questionType/trapType " +
 	"distributions, trap-type balance, explanation option-position references, NOT/EXCEPT framing, " +
-	"all/none-of-the-above options, exam-tip sentence count, structural/enum validity. " +
-	"NOT checked (require human/LLM judgment — intentionally out of scope): semantic correctness of " +
-	"answers, distractor plausibility, questionType/trapType semantic accuracy, explanation " +
-	"pedagogical quality, wording quality. Answer-index/answer-position distribution is " +
-	"intentionally not audited (options shuffle at runtime)."
+	"all/none-of-the-above options, structural/enum validity. " +
+	"NOT checked (intentionally out of scope): exam-tip sentence count (a 2-3 sentence tip is " +
+	"fine — owner decision), semantic correctness of answers, distractor plausibility, " +
+	"questionType/trapType semantic accuracy, explanation pedagogical quality, wording quality. " +
+	"Answer-index/answer-position distribution is not audited (options shuffle at runtime)."
 
 // Audit runs every deterministic rule and assembles the auditor.md report.
 // overallPass is true only when there are zero critical flags.
@@ -92,7 +92,6 @@ func Audit(testFile string, t parse.Test, tg Targets) Report {
 	fa, structural := FieldFlags(qs)
 	explFlags := ExplanationFlags(qs)
 	qTextFlags := QuestionTextFlags(qs)
-	tipFlags := ExamTipFlags(qs)
 
 	var critical []string
 	var albFlags []string
@@ -163,7 +162,7 @@ func Audit(testFile string, t parse.Test, tg Targets) Report {
 		},
 		QuestionFlags:      toQFlags(qIssues),
 		ExplanationFlags:   toQFlags(explFlags),
-		ExamTipFlags:       toQFlags(tipFlags),
+		ExamTipFlags:       []QFlag{},
 		FieldAccuracyFlags: toQFlags(fa),
 		CoverageAudit:      domainCoverage(qs),
 		Summary:            "",

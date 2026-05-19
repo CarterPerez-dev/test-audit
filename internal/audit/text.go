@@ -58,19 +58,5 @@ func QuestionTextFlags(qs []parse.Question) map[int][]string {
 	return out
 }
 
-// ExamTipFlags flags exam tips longer than one sentence.
-func ExamTipFlags(qs []parse.Question) map[int][]string {
-	out := make(map[int][]string)
-	for _, q := range qs {
-		if n := CountSentences(q.ExamTip); n > 1 {
-			out[q.ID] = append(
-				out[q.ID],
-				fmt.Sprintf(
-					"exam tip is %d sentences (must be one sentence max)",
-					n,
-				),
-			)
-		}
-	}
-	return out
-}
+// Exam-tip sentence count is intentionally NOT audited (owner decision:
+// a 2-3 sentence tip is fine, flagging it is pure noise / busywork).

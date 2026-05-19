@@ -27,12 +27,12 @@ test-audit cissp_test_6.js --stdout | jq .overallPass
   (declared) 10/15/40/20/15, trapType balance (all six present, none >25%,
   each ≥5). Targets are policy, overridable with `--targets file.json`.
 - **Explanation option-position references** (critical — options shuffle at
-  runtime), **NOT/EXCEPT framing**, **all/none-of-the-above**, **exam-tip
-  sentence count**.
+  runtime), **NOT/EXCEPT framing**, **all/none-of-the-above**.
 
 ## What it does NOT check (semantic — intentionally out of scope)
 
-Answer correctness, distractor plausibility, questionType/trapType *semantic*
+Exam-tip sentence count (a 2-3 sentence tip is fine — owner decision), answer
+correctness, distractor plausibility, questionType/trapType *semantic*
 accuracy, explanation pedagogical quality, wording. These need human/LLM
 judgment and are disclosed in every report's `summary`. Answer-index/position
 distribution is intentionally not audited (UI shuffles options every render).

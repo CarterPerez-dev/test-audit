@@ -62,17 +62,3 @@ func TestQuestionTextFlags_NotFramingAndAboveOptions(t *testing.T) {
 		t.Errorf("q3 is clean, should not flag: %v", f[3])
 	}
 }
-
-func TestExamTipFlags_MultiSentence(t *testing.T) {
-	qs := []parse.Question{
-		{ID: 1, ExamTip: "Due care = act reasonably. Due diligence = investigate."},
-		{ID: 2, ExamTip: "AES is symmetric — one key encrypts and decrypts."},
-	}
-	f := ExamTipFlags(qs)
-	if len(f[1]) == 0 {
-		t.Errorf("q1 exam tip is 2 sentences, should flag")
-	}
-	if len(f[2]) != 0 {
-		t.Errorf("q2 exam tip is one sentence, should not flag: %v", f[2])
-	}
-}

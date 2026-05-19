@@ -161,6 +161,29 @@ func TestAudit_GuaranteedLengthBiasFails(t *testing.T) {
 	}
 }
 
+func TestAudit_DoesNotFlagExamTipLength(t *testing.T) {
+	// Owner decision: exam-tip sentence count is NOT audited (too noisy,
+	// no value). Multi-sentence tips must produce zero examTipFlags.
+	var qs []parse.Question
+	for i := 0; i < 10; i++ {
+		qs = append(qs, parse.Question{
+			ID: i + 1, Question: "Which control enforces least privilege?",
+			Options:            []string{"RBAC", "Discretionary access control lists", "Mandatory access labels", "Attribute based policies"},
+			CorrectAnswerIndex: 0,
+			Explanation:        "Role based access control maps permissions to roles unlike the others.",
+			ExamTip:            "First sentence here. Second sentence too. Even a third one.",
+			Domain:             "1. Security and Risk Management",
+			QuestionType:       "recall", StemLength: "short", TrapType: trapTypes[i%6],
+			Tags: []string{"a", "b", "c"},
+		})
+	}
+	rep := Audit("tip_test_1.js", qs2test(qs), DefaultTargets())
+	if len(rep.ExamTipFlags) != 0 {
+		t.Fatalf("exam-tip length must not be audited, got %d flags: %+v",
+			len(rep.ExamTipFlags), rep.ExamTipFlags)
+	}
+}
+
 func qs2test(qs []parse.Question) parse.Test {
 	return parse.Test{
 		Category:     "clean",
