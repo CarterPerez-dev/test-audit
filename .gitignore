@@ -1,0 +1,7 @@
+# © AngelaMos | 2026
+# .gitignore
+
+bin/
+coverage.out
+coverage.html
+*.test
